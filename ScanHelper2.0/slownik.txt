@@ -1,0 +1,37 @@
+1;okładka;_okl.;0
+2;spis dokumentów operatu technicznego;_spt.;1
+3;wniosek o przyjęcie do zasobu;_wnpg.;1
+4;protokół kontroli;_pkt.;1
+5;decyzja administracyjna;_dec.;0
+6;postanowienie;_pst.;0
+7;zarys;_zar.;0
+8;pierworys;_pier.;0
+9;mapy zmian i notatnik zmian;_nze.;0
+10;szkic polowy;_szp.;0
+11;szkice podstawowe;_szb.;0
+12;szkice polowe/mapa przeglądowa osnowy pomiarowej;_szo.;1
+13;dziennik pomiarowy;_ddz.;1
+14;wykaz współrzędnych;_wsp.;1
+15;wykaz współrzędnych punktów osnowy oraz błędy średnie tych punktów po wyrównaniu;_wspo.;1
+16;sprawozdanie techniczne;_stc.;1
+17;obliczenia współrzędnych;_owp.;1
+18;zestawienia i porównania, rozliczenie powierzchni;_opp.;1
+19;porównanie współrzędnych punktów granicznych oraz ich atrybutów opisowych;_powsp.;1
+20;badanie księgi wieczystej;_bkw.;1
+21;protokół graniczny;_pgr.;0
+22;protokół wznowienia-wyznaczenia znaków granicznych ;_pwzg.;0
+23;protokół przyjęcia granic;_pwg.;0
+24;protokoły okazania nowych granic i przekazania;_png.;0
+25;wykaz zmian danych ewidencyjnych;_wzd.;1
+26;dowód doręczenia zawiadomienia;_zdz.;1
+27;mapa ;_mp.;0
+28;zgłoszenie pracy geodezyjnej;_zgp.;1
+29;wypis z rejestru gruntów;_wsr.;1
+30;opis topograficzny;_opto.;1
+31;dokumentacja klasyfikacyjna;_dku.;1
+32;upoważnienie;_upo.;0
+33;akt notarialny;_akt.;0
+34;oświadczenie;_osw.;0
+35;inny;_inn.;1
+36;inne dokumenty klasyfikacyjne;_indk.;1
+37;wniosek o wprowadzenie do EGiB;_woe.;1

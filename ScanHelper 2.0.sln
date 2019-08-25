@@ -1,0 +1,53 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29102.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScanHelper", "ScanHelper2.0\ScanHelper.csproj", "{9210B1C1-959D-436B-96D6-27074E4E58FD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LicenseGenerator", "LicenseGenerator\LicenseGenerator.csproj", "{E95E07B9-F612-49D9-82FB-C609446BC0DE}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "Tools", "Tools\Tools.shproj", "{0F207B82-9BC3-40CB-B650-0915B68CBC8F}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "License", "License\License.shproj", "{0E661AE5-DDF3-4F0A-8022-CF43A6E9D9C8}"
+EndProject
+Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		License\License.projitems*{0e661ae5-ddf3-4f0a-8022-cf43a6e9d9c8}*SharedItemsImports = 13
+		Tools\Tools.projitems*{0f207b82-9bc3-40cb-b650-0915b68cbc8f}*SharedItemsImports = 13
+		License\License.projitems*{9210b1c1-959d-436b-96d6-27074e4e58fd}*SharedItemsImports = 4
+		Tools\Tools.projitems*{9210b1c1-959d-436b-96d6-27074e4e58fd}*SharedItemsImports = 4
+		License\License.projitems*{e95e07b9-f612-49d9-82fb-c609446bc0de}*SharedItemsImports = 4
+		Tools\Tools.projitems*{e95e07b9-f612-49d9-82fb-c609446bc0de}*SharedItemsImports = 4
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Debug|x86.Build.0 = Debug|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Release|x86.ActiveCfg = Release|Any CPU
+		{9210B1C1-959D-436B-96D6-27074E4E58FD}.Release|x86.Build.0 = Release|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Debug|x86.Build.0 = Debug|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Release|x86.ActiveCfg = Release|Any CPU
+		{E95E07B9-F612-49D9-82FB-C609446BC0DE}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9E72E4F8-6817-4F6C-BAD3-E805971C1167}
+	EndGlobalSection
+EndGlobal
