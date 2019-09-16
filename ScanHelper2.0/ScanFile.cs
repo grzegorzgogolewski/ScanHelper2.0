@@ -11,6 +11,8 @@ namespace ScanHelper
         public System.Drawing.Image ImageFile { get; set; }
         public byte[] PdfFile { get; set; }
         public string Prefix { get; set; }
+        public string FileNameNew { get; set; }
+        public bool Merged { get; set; } = false;
     }
 
     public class ScanFileDict : Dictionary<int, ScanFile>

@@ -5,7 +5,17 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
-using iTextSharp.text.pdf;
+using iText.IO.Font;
+using iText.IO.Source;
+using iText.Kernel.Colors;
+using iText.Kernel.Font;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Pdf.Extgstate;
+using iText.Kernel.Utils;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
 using License;
 using ScanHelper.Properties;
 using Tools;
@@ -37,7 +47,7 @@ namespace ScanHelper
 
             buttonRotate.Text = @"Obróć";
             buttonSkip.Text = @"Pomiń";
-            buttonMergeAll.Text = @"Scal pliki";
+            buttonMergeAll.Text = @"Scal i zapisz pliki";
             buttonWatermark.Text = @"Znak wodny";
             buttonSave.Text = @"Zapisz pliki";
 
@@ -85,11 +95,34 @@ namespace ScanHelper
             pdfDocumentViewer.VerticalScroll.Enabled = false;
 
             //  załaduj plik startowy do okienka z podglądem 
-            Global.Zoom = GetFitZoom(File.ReadAllBytes("ScanHelper.pdf"));
+            Global.Zoom = GetFitZoom(File.ReadAllBytes("ScanHelper.pdf"), out int _);
             pdfDocumentViewer.LoadFromStream(new MemoryStream(File.ReadAllBytes("ScanHelper.pdf")));
             pdfDocumentViewer.ZoomTo(Global.Zoom);
             pdfDocumentViewer.EnableHandTool();
 
+            using (PdfDocument pdf = new PdfDocument(new PdfWriter("c:\\strona_0.pdf", new WriterProperties())))
+            {
+                PdfPage page = pdf.AddNewPage();
+                page.SetRotation(0);
+            }
+
+            using (PdfDocument pdf = new PdfDocument(new PdfWriter("c:\\strona_90.pdf", new WriterProperties())))
+            {
+                PdfPage page = pdf.AddNewPage();
+                page.SetRotation(90);
+            }
+
+            using (PdfDocument pdf = new PdfDocument(new PdfWriter("c:\\strona_180.pdf", new WriterProperties())))
+            {
+                PdfPage page = pdf.AddNewPage();
+                page.SetRotation(180);
+            }
+
+            using (PdfDocument pdf = new PdfDocument(new PdfWriter("c:\\strona_270.pdf", new WriterProperties())))
+            {
+                PdfPage page = pdf.AddNewPage();
+                page.SetRotation(270);
+            }
         }
 
         private void FormMain_Shown(object sender, EventArgs e)
@@ -101,8 +134,10 @@ namespace ScanHelper
             {
                 case LicenseStatus.Undefined:       //  jeżeli nie ma plik z licencją
 
-                    FormLicense frm = new FormLicense();
-                    frm.ShowDialog(this);
+                    using (FormLicense frm = new FormLicense())
+                    {
+                        frm.ShowDialog(this);
+                    }
 
                     Application.Exit();
 
@@ -155,7 +190,7 @@ namespace ScanHelper
             height = Convert.ToInt32(IniSettings.ReadIni("FormMain", "height"));
 
             // jeżeli okno nie będzie dobrze widoczne po odczytaniu pozycji z pliku konfiguracji
-            return x <= SystemInformation.VirtualScreen.Width && y <= SystemInformation.VirtualScreen.Height;
+            return x <= SystemInformation.VirtualScreen.Width && y <= SystemInformation.VirtualScreen.Height && x > 0 && y > 0;
         }
 
         /// <summary>
@@ -237,7 +272,7 @@ namespace ScanHelper
                             if (fileNames.Length == 0)
                             {
                                 //  załaduj plik startowy do okienka z podglądem 
-                                Global.Zoom = GetFitZoom(File.ReadAllBytes("ScanHelper.pdf"));
+                                Global.Zoom = GetFitZoom(File.ReadAllBytes("ScanHelper.pdf"), out int _);
                                 pdfDocumentViewer.LoadFromStream(new MemoryStream(File.ReadAllBytes("ScanHelper.pdf")));
                                 pdfDocumentViewer.ZoomTo(Global.Zoom);
                                 pdfDocumentViewer.EnableHandTool();
@@ -263,7 +298,7 @@ namespace ScanHelper
 
             listBoxFiles.Items.Clear();     //  wyczyść aktualną listę plików w okienku z listą plików
 
-            int idFile = 1;
+            int idFile = 0;
 
             foreach (string fileName in fileNames)
             {
@@ -294,8 +329,8 @@ namespace ScanHelper
             }
 
             //  załaduj do okienka z podglądem pierwszy z wybranych plików
-            Global.Zoom = GetFitZoom(Global.ScanFiles[1].PdfFile);
-            pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[1].PdfFile));
+            Global.Zoom = GetFitZoom(Global.ScanFiles[0].PdfFile, out int _);
+            pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[0].PdfFile));
             pdfDocumentViewer.ZoomTo(Global.Zoom);
             pdfDocumentViewer.EnableHandTool();
 
@@ -306,38 +341,41 @@ namespace ScanHelper
         /// Pobieranie wartości zoom okna dla pliku, tak by zmieścił się w oknie
         /// </summary>
         /// <param name="pdfFile">plik dla którego należy obliczyć zoom</param>
+        /// <param name="pdfRotation">rotacja strony PDF</param>
         /// <returns>wartość zoom</returns>
-        private int GetFitZoom(byte[] pdfFile)
+        private int GetFitZoom(byte[] pdfFile, out int pdfRotation)
         {
             double pdfPageSizeXPoint;       //  wielkość pliku w punktach
             double pdfPageSizeYPoint;       //  wielkość pliku w punktach
-                
-            PdfReader reader = new PdfReader(pdfFile);
 
-            PdfDictionary pageDict = reader.GetPageN(1);
+            IRandomAccessSource byteSource = new RandomAccessSourceFactory().CreateSource(pdfFile);
 
-            PdfNumber rotation = pageDict.GetAsNumber(PdfName.ROTATE) ?? new PdfNumber(0);      //  pobierz aktualną wartość obrotu
-
-            switch (rotation.IntValue % 360)
+            using(PdfReader reader = new PdfReader(byteSource, new ReaderProperties()))
+            using (PdfDocument pdfDoc = new PdfDocument(reader))
             {
-                case 0:
-                case 180:
-                    pdfPageSizeYPoint = reader.GetPageSize(1).Height;       //  wielkość pliku w punktach
-                    pdfPageSizeXPoint = reader.GetPageSize(1).Width;        //  wielkość pliku w punktach
-                    break;
+                pdfRotation = pdfDoc.GetPage(1).GetRotation();
 
-                case 90:
-                case 270:
-                    pdfPageSizeYPoint = reader.GetPageSize(1).Width;        //  wielkość pliku w punktach
-                    pdfPageSizeXPoint = reader.GetPageSize(1).Height;       //  wielkość pliku w punktach
-                    break;
+                switch (pdfRotation)
+                {
+                    case 0:
+                    case 180:
+                        pdfPageSizeYPoint = pdfDoc.GetPage(1).GetPageSize().GetHeight();    //  wielkość pliku w punktach
+                        pdfPageSizeXPoint = pdfDoc.GetPage(1).GetPageSize().GetWidth();     //  wielkość pliku w punktach
+                        break;
 
-                default:
-                    throw new Exception(@"Błędny kąt obrotu!");
+                    case 90:
+                    case 270:
+                        pdfPageSizeYPoint = pdfDoc.GetPage(1).GetPageSize().GetWidth();     //  wielkość pliku w punktach
+                        pdfPageSizeXPoint = pdfDoc.GetPage(1).GetPageSize().GetHeight();    //  wielkość pliku w punktach
+                        break;
+
+                    default:
+                        throw new Exception(@"Błędny kąt obrotu!");
+                }
             }
 
-            reader.Close();
-            
+            byteSource.Close();
+
             float dpiX;
             float dpiY;
 
@@ -383,16 +421,16 @@ namespace ScanHelper
         /// <param name="e"></param>
         private void ListBoxFiles_SelectedIndexChanged(object sender, EventArgs e)
         {
-            Global.IdSelectedFile = listBoxFiles.SelectedIndex + 1;
+            Global.IdSelectedFile = listBoxFiles.SelectedIndex;
 
-            Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
+            Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile, out int pdfRotation);
             pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
             pdfDocumentViewer.ZoomTo(Global.Zoom);
             pdfDocumentViewer.EnableHandTool();
 
             long fileSize = Global.ScanFiles[Global.IdSelectedFile].PdfFile.Length / 1024;
 
-            statusStripMainInfo.Text = $@"Aktualny plik PDF: {Global.ScanFiles[Global.IdSelectedFile].IdFile}/{Global.ScanFiles.Count} - {Global.ScanFiles[Global.IdSelectedFile].PathAndFileName} [{fileSize} KB]";
+            statusStripMainInfo.Text = $@"Aktualny plik PDF: {Global.ScanFiles[Global.IdSelectedFile].IdFile}/{Global.ScanFiles.Count} - {Global.ScanFiles[Global.IdSelectedFile].PathAndFileName} [{fileSize} KB, Rotacja: {pdfRotation}]";
         }
 
         /// <summary>
@@ -402,38 +440,52 @@ namespace ScanHelper
         /// <param name="e"></param>
         private void ButtonDictionary_Click(object sender, EventArgs e)
         {
+            //  jeżeli dany plik miał już przypisaną nową nazwę i roadzj
+            if (!string.IsNullOrEmpty(Global.ScanFiles[Global.IdSelectedFile].Prefix))
+            {
+                MessageBox.Show(@"Plik został już zindeksowany!", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            } 
+
             int buttonNumber = short.Parse(((Button)sender).Name.Replace("buttonDictionary", ""));  //  pobranie numeru wciśniętego przycisku
 
             string prefix = Global.DokDict[buttonNumber].Prefix;    //  pobranie prefiksu pliku na podstawie numeru przycisku
 
             Global.ScanFiles[Global.IdSelectedFile].Prefix = prefix;    //  przypisanie prefiksu dla wybranego pliku
 
-            string newFileName = Global.IdSelectedFile.ToString().PadLeft(4, '0') + 
-                                 "_" + 
-                                 textBoxOperat.Text + 
-                                 "_" + 
-                                 prefix.TrimEnd('.').TrimStart('_').ToUpper();    //  budowa nowej nazwy pliku
+            int idKdokRodzCount = ++Global.DokDict[buttonNumber].Count;       //  zwiększ ilość plików danego rodzaju i pobierz tą wartość
+
+            string fileNameNew = textBoxOperat.Text +
+                                 "_" +
+                                 (Global.IdSelectedFile + 1) + 
+                                 "-" +
+                                 prefix + 
+                                 "-" + 
+                                 idKdokRodzCount.ToString().PadLeft(3, '0') +
+                                 Path.GetExtension(Global.ScanFiles[Global.IdSelectedFile].FileName);
+
+            Global.ScanFiles[Global.IdSelectedFile].FileNameNew = fileNameNew;
 
             // chwilowe wyłączenie obsługi zdarzania dla listbox, by móc zmienić nazwę wyświetlanego pliku
             listBoxFiles.SelectedIndexChanged -= ListBoxFiles_SelectedIndexChanged;
-            listBoxFiles.Items[Global.IdSelectedFile - 1] = "OK -> " + newFileName;
+            listBoxFiles.Items[Global.IdSelectedFile] = "OK -> " + fileNameNew;
             listBoxFiles.SelectedIndexChanged += ListBoxFiles_SelectedIndexChanged;
 
-            if (Global.Watermark)       //  jeżeli ustawione jest by do każdego pliku dodawać znak wodny
-                Global.ScanFiles[Global.IdSelectedFile].PdfFile = SetWatermarkPdf(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
+            //  jeżeli ustawione jest by do każdego pliku dodawać znak wodny
+            if (Global.Watermark) 
+                SetWatermarkPdf(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
 
-            if (Global.IdSelectedFile < Global.ScanFiles.Count)     //  jeżeli wskazany plik nie jest ostatni na liście to ustaw się na kolejnym
+            if (Global.IdSelectedFile < Global.ScanFiles.Count -1 )     //  jeżeli wskazany plik nie jest ostatni na liście to ustaw się na kolejnym
             {
-                listBoxFiles.SetSelected(Global.IdSelectedFile, true);    //    ustaw się na następnym pliku (listbox ma numerację od "0" wiec nie ma + 1)
+                listBoxFiles.SetSelected(Global.IdSelectedFile + 1, true);    //    ustaw się na następnym pliku (listbox ma numerację od "0" wiec nie ma + 1)
             }
-            else // jeśli wskazany plik jest ostatni na liście to ustaw mu nową nazwę oraz wczytaj go do podglądu po wykonaniu operacji
+            else // jeśli wskazany plik jest ostatni na liście to ustaw mu nową nazwę oraz wczytaj go do podglądu po wykonaniu operacji (inaczej nie pokaże się znak wodny)
             {
-                Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
+                Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile, out int _);
                 pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
                 pdfDocumentViewer.ZoomTo(Global.Zoom);
                 pdfDocumentViewer.EnableHandTool();
             }
-            
         }
 
         /// <summary>
@@ -443,6 +495,7 @@ namespace ScanHelper
         /// <param name="e"></param>
         private void BtnRotate_ClickOrKeyPress(object sender, EventArgs e)
         {
+            // jeśli nie ma plików na liście to nic nie rób
             if (listBoxFiles.Items.Count <= 0)
                 return;
 
@@ -463,8 +516,8 @@ namespace ScanHelper
                         desiredRot = 270;
                         break;
                 }
-            } 
-            
+            }
+
             if (e.GetType() == typeof(MouseEventArgs))   // jeśli obracanie zostało wywołane myszką
             {
                 MouseEventArgs arg = (MouseEventArgs)e;
@@ -481,43 +534,43 @@ namespace ScanHelper
                 }
             }
 
-            using (MemoryStream outStream = new MemoryStream())
+            IRandomAccessSource byteSource = new RandomAccessSourceFactory().CreateSource(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
+            PdfReader pdfReader = new PdfReader(byteSource, new ReaderProperties());
+
+            MemoryStream memoryStreamOutput = new MemoryStream();
+            PdfWriter pdfWriter = new PdfWriter(memoryStreamOutput);
+
+            PdfDocument pdfDoc = new PdfDocument(pdfReader, pdfWriter);
+
+            PdfPage page = pdfDoc.GetPage(1);
+
+            var rotate = page.GetPdfObject().GetAsNumber(PdfName.Rotate);
+
+            if (rotate == null)
             {
-                PdfReader pdfReader = new PdfReader(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
-
-                PdfStamper pdfStamper = new PdfStamper(pdfReader, outStream);
-
-                PdfDictionary pageDict = pdfReader.GetPageN(1);    //  odczytaj tylko pierwszą stronę
-
-                PdfNumber rotation = pageDict.GetAsNumber(PdfName.ROTATE);      //  odczytaj wartość obrotu strony
-
-                if (rotation != null)
-                {
-                    desiredRot += rotation.IntValue;
-                    desiredRot %= 360; 
-                }
-
-                pageDict.Put(PdfName.ROTATE, new PdfNumber(desiredRot));    //  dodaj atrybut nowego kąta obrotu
-
-                pdfStamper.Close();
-                pdfReader.Close();
-
-                Global.ScanFiles[Global.IdSelectedFile].PdfFile = outStream.ToArray();     //  Przypisz nowy dokument do klasy obiektów ze skanami
-
-                if (Global.SaveRotation)
-                    File.WriteAllBytes(Global.ScanFiles[Global.IdSelectedFile].PathAndFileName, outStream.ToArray());  //  zapisz nowy plik na dysku w miejsce starego
-                
-                //  Wyświetl nowy plik w oknie podglądu
-                Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
-                pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
-                pdfDocumentViewer.ZoomTo(Global.Zoom);
-                pdfDocumentViewer.EnableHandTool();
+                page.SetRotation(desiredRot);
             }
-        }
+            else {
+                page.SetRotation((rotate.IntValue() + desiredRot) % 360);
+            }
 
-        private void BtnScalAuto_Click(object sender, EventArgs e)
-        {
+            pdfDoc.Close();
 
+            Global.ScanFiles[Global.IdSelectedFile].PdfFile = memoryStreamOutput.ToArray();     //  Przypisz nowy dokument do klasy obiektów ze skanami
+
+            if (Global.SaveRotation)
+                File.WriteAllBytes(Global.ScanFiles[Global.IdSelectedFile].PathAndFileName, memoryStreamOutput.ToArray());  //  zapisz nowy plik na dysku w miejsce starego
+
+            byteSource.Close();
+            memoryStreamOutput.Close();
+            pdfReader.Close();
+            pdfWriter.Close();
+
+            //  Wyświetl nowy plik w oknie podglądu
+            Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile, out int _);
+            pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
+            pdfDocumentViewer.ZoomTo(Global.Zoom);
+            pdfDocumentViewer.EnableHandTool();
         }
 
         private void BtnSkip_Click(object sender, EventArgs e)
@@ -527,7 +580,7 @@ namespace ScanHelper
 
             // chwilowe wyłączenie obsługi zdarzania dla listbox, by móc zmienić nazwę wyświetlanego pliku
             listBoxFiles.SelectedIndexChanged -= ListBoxFiles_SelectedIndexChanged;
-            listBoxFiles.Items[Global.IdSelectedFile - 1] = "SKIP -> " + Global.ScanFiles[Global.IdSelectedFile].FileName;
+            listBoxFiles.Items[Global.IdSelectedFile] = "SKIP -> " + Global.ScanFiles[Global.IdSelectedFile].FileName;
             listBoxFiles.SelectedIndexChanged += ListBoxFiles_SelectedIndexChanged;
 
             Global.ScanFiles[Global.IdSelectedFile].Prefix = "skip";
@@ -549,9 +602,9 @@ namespace ScanHelper
             {
                 case MouseButtons.Left:     //  jeżeli wciśnięto lewy guzik to dodaj znak wodny do wskazanego pliku 
 
-                    Global.ScanFiles[Global.IdSelectedFile].PdfFile = SetWatermarkPdf(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
+                    SetWatermarkPdf(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
 
-                    Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
+                    Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile, out int _);
                     pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
                     pdfDocumentViewer.ZoomTo(Global.Zoom);
 
@@ -559,15 +612,15 @@ namespace ScanHelper
 
                 case MouseButtons.Right:        //  jeżeli wciśnięto prawy guzik to dodaj znak wodny do wszystkich plików z listy
 
-                    for (int i = 1; i <= Global.ScanFiles.Count; i++)
+                    for (int i = 0; i < Global.ScanFiles.Count; i++)
                     {
-                        Global.ScanFiles[i].PdfFile = SetWatermarkPdf(Global.ScanFiles[i].PdfFile);
+                        SetWatermarkPdf(Global.ScanFiles[i].PdfFile);
                         
-                        Global.Zoom = GetFitZoom(Global.ScanFiles[i].PdfFile); 
+                        Global.Zoom = GetFitZoom(Global.ScanFiles[i].PdfFile, out int _); 
                         pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[i].PdfFile));
                         pdfDocumentViewer.ZoomTo(Global.Zoom);
                         
-                        listBoxFiles.SetSelected(i - 1, true);
+                        listBoxFiles.SetSelected(i, true);
                     }
 
                     break;
@@ -581,57 +634,78 @@ namespace ScanHelper
         /// </summary>
         /// <param name="pdfFile">Plik do którego należy wstawić znak wodny</param>
         /// <returns></returns>
-        private byte[] SetWatermarkPdf(byte[] pdfFile)
+        private void SetWatermarkPdf(byte[] pdfFile)
         {
-            byte[] pdfFileWatermark;
+            IRandomAccessSource byteSource = new RandomAccessSourceFactory().CreateSource(pdfFile);
+            PdfReader pdfReader = new PdfReader(byteSource, new ReaderProperties());
 
-            using (MemoryStream outStream = new MemoryStream())
+            MemoryStream memoryStreamOutput = new MemoryStream();
+            PdfWriter pdfWriter = new PdfWriter(memoryStreamOutput);
+
+            PdfDocument pdfDoc = new PdfDocument(pdfReader, pdfWriter);
+
+            FontProgram fontProgram = new TrueTypeFont(Resources.arial);
+
+            PdfFont pdfFont = PdfFontFactory.CreateFont(fontProgram, PdfEncodings.IDENTITY_H, true);
+
+            PdfCanvas over = new PdfCanvas(pdfDoc.GetFirstPage());
+
+            over.SetFillColor(ColorConstants.BLACK);
+
+            Paragraph p = new Paragraph(File.ReadAllText("stopka.txt"));
+            p.SetFont(pdfFont);
+            p.SetFontSize(8);
+            p.SetFixedLeading(8);
+
+            over.SaveState();
+
+            PdfExtGState gs1 = new PdfExtGState();
+            gs1.SetFillOpacity(0.2f);
+            gs1.SetStrokeOpacity(0.2f);
+
+            over.SetExtGState(gs1);
+
+            int pageRotation = pdfDoc.GetPage(1).GetRotation();
+            float textAngleRad = (float)(pageRotation * Math.PI / 180.0);
+
+            float pageWidth = pdfDoc.GetPage(1).GetPageSizeWithRotation().GetWidth();
+            float pageHeight = pdfDoc.GetPage(1).GetPageSizeWithRotation().GetHeight();
+
+            using (Canvas stopka = new Canvas(over, pdfDoc, pdfDoc.GetPage(1).GetPageSizeWithRotation()))
             {
-                BaseFont baseFont = BaseFont.CreateFont("arial.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, BaseFont.CACHED, Resources.arial, null);
-
-                PdfReader pdfReader = new PdfReader(pdfFile);
-
-                PdfStamper pdfStamper = new PdfStamper(pdfReader, outStream);
-
-                for (int i = 1; i <= pdfReader.NumberOfPages; i++)
+                switch (pageRotation)
                 {
-                    iTextSharp.text.Rectangle pageRectangle = pdfReader.GetPageSizeWithRotation(i);
+                    case 0:
+                        stopka.ShowTextAligned(p, pageWidth / 2, 8, 1, TextAlignment.CENTER, VerticalAlignment.BOTTOM, textAngleRad);
+                        break;
 
-                    PdfContentByte pdfPageContents = pdfStamper.GetOverContent(i);
+                    case 90:
+                        stopka.ShowTextAligned(p, pageHeight - 8, pageWidth / 2, 1, TextAlignment.CENTER, VerticalAlignment.BOTTOM, textAngleRad);
+                        break;
 
-                    pdfPageContents.SaveState();
+                    case 180:
+                        stopka.ShowTextAligned(p, pageWidth / 2, pageHeight - 8, 1, TextAlignment.CENTER, VerticalAlignment.BOTTOM, textAngleRad);
+                        break;
 
-                    PdfGState state = new PdfGState { FillOpacity = 0.5f, StrokeOpacity = 0.5f };
+                    case 270:
+                        stopka.ShowTextAligned(p, 8, pageWidth / 2, 1, TextAlignment.CENTER, VerticalAlignment.BOTTOM, textAngleRad);
+                        break;
 
-                    pdfPageContents.SetGState(state);
-
-                    pdfPageContents.BeginText();
-
-                    pdfPageContents.SetFontAndSize(baseFont, 8f);
-                    pdfPageContents.SetRGBColorFill(128, 128, 128);
-
-                    ColumnText ctOperat = new ColumnText(pdfPageContents);
-                    iTextSharp.text.Phrase pOperatText = new iTextSharp.text.Phrase(textBoxOperat.Text, new iTextSharp.text.Font(baseFont, 14f));
-                    ctOperat.SetSimpleColumn(pOperatText, 10, pageRectangle.Height - 50, 150, pageRectangle.Height - 10, 14f, iTextSharp.text.Element.ALIGN_LEFT);
-                    ctOperat.Go();
-
-                    ColumnText ctStopka = new ColumnText(pdfPageContents);
-                    iTextSharp.text.Phrase myText = new iTextSharp.text.Phrase(File.ReadAllText("stopka.txt"), new iTextSharp.text.Font(baseFont, 8f));
-                    ctStopka.SetSimpleColumn(myText, 0, 0, pageRectangle.Width, 50, 8f, iTextSharp.text.Element.ALIGN_CENTER);
-                    ctStopka.Go();
-
-                    pdfPageContents.EndText();
-
-                    pdfPageContents.RestoreState();
+                    default:
+                        throw new Exception("Błędny kąt obrotu strony");
                 }
-
-                pdfStamper.Close();
-                pdfReader.Close();
-
-                pdfFileWatermark = outStream.ToArray();
             }
+            
+            over.RestoreState();
 
-            return pdfFileWatermark;
+            pdfDoc.Close();
+
+            Global.ScanFiles[Global.IdSelectedFile].PdfFile = memoryStreamOutput.ToArray();
+
+            byteSource.Close();
+            memoryStreamOutput.Close();
+            pdfReader.Close();
+            pdfWriter.Close();
         }
 
         /// <summary>
@@ -669,7 +743,7 @@ namespace ScanHelper
             byte[] byteArray = listBoxFiles.Items.Count > 0 ?   //  Jeśli są jakieś dokumenty na liście to pobierz zaznaczony, jeśli nie to startowy
                 Global.ScanFiles[Global.IdSelectedFile].PdfFile : File.ReadAllBytes("ScanHelper.pdf");
 
-            Global.Zoom = GetFitZoom(byteArray);     //  pobierz wartość zoom tak by dokument mieścił się w oknie
+            Global.Zoom = GetFitZoom(byteArray, out int _);     //  pobierz wartość zoom tak by dokument mieścił się w oknie
             pdfDocumentViewer.ZoomTo(Global.Zoom);      //  ustaw zoom dokumentu
             
         }
@@ -681,21 +755,56 @@ namespace ScanHelper
         /// <param name="e"></param>
         private void ResetListToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (listBoxFiles.Items.Count > 0)
+            // jeśli lista jest pusta lub plik nie ma przyisanych atrybutów
+            if (listBoxFiles.Items.Count <= 0 || string.IsNullOrEmpty(Global.ScanFiles[Global.IdSelectedFile].Prefix)) return;
+
+            Global.ScanFiles[Global.IdSelectedFile].Prefix = string.Empty;  //  usuń prefiks
+            Global.ScanFiles[Global.IdSelectedFile].FileNameNew = string.Empty; //  usuń nową nazwę pliku
+            
+            Global.ScanFiles[Global.IdSelectedFile].PdfFile = File.ReadAllBytes(Global.ScanFiles[Global.IdSelectedFile].PathAndFileName);   //  wczytaj plik na nowo
+
+            // zerowanie licznika rodzaju dokumentów by utworzyć go na nowo na podstawie już nazwanych plików
+            for (int i = 1; i <= Global.DokDict.Count; i++)
             {
-                // chwilowe wyłączenie obsługi zdarzania dla listbox, by móc zmienić nazwę wyświetlanego pliku
-                listBoxFiles.SelectedIndexChanged -= ListBoxFiles_SelectedIndexChanged;
-                listBoxFiles.Items[Global.IdSelectedFile - 1] = Global.ScanFiles[Global.IdSelectedFile].FileName;   //  przywróć oryginalną nazwę pliku na liście
-                listBoxFiles.SelectedIndexChanged += ListBoxFiles_SelectedIndexChanged;
-
-                Global.ScanFiles[Global.IdSelectedFile].Prefix = string.Empty;  //  usuń prefiks
-                Global.ScanFiles[Global.IdSelectedFile].PdfFile = File.ReadAllBytes(Global.ScanFiles[Global.IdSelectedFile].PathAndFileName);   //  wczytaj plik na nowo
-
-                Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile);
-                pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
-                pdfDocumentViewer.ZoomTo(Global.Zoom);
-                pdfDocumentViewer.EnableHandTool();
+                Global.DokDict[i].Count = 0;
             }
+
+            // chwilowe wyłączenie obsługi zdarzania dla listbox, by móc zmienić nazwę wyświetlanego pliku
+            listBoxFiles.SelectedIndexChanged -= ListBoxFiles_SelectedIndexChanged;
+
+            for (int i = 0; i < Global.ScanFiles.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(Global.ScanFiles[i].Prefix))
+                {
+                    int idKdokRodz = Global.DokDict.Values.First(s => s.Prefix == Global.ScanFiles[i].Prefix).IdRodzDok;
+                    Global.DokDict[idKdokRodz].Count += 1;
+                    
+                    string fileNameNew = textBoxOperat.Text +
+                                         "_" +
+                                         (i + 1) + 
+                                         "-" +
+                                         Global.ScanFiles[i].Prefix + 
+                                         "-" + 
+                                         Global.DokDict[idKdokRodz].Count.ToString().PadLeft(3, '0') +
+                                         Path.GetExtension(Global.ScanFiles[Global.IdSelectedFile].FileName);
+
+                    Global.ScanFiles[i].FileNameNew = fileNameNew;
+                    listBoxFiles.Items[i] = "OK -> " + Global.ScanFiles[i].FileNameNew;
+                }
+                else
+                {
+                    listBoxFiles.Items[i] = Global.ScanFiles[i].FileName;
+                }
+            }
+
+            listBoxFiles.SetSelected(Global.IdSelectedFile, true);
+
+            listBoxFiles.SelectedIndexChanged += ListBoxFiles_SelectedIndexChanged;
+
+            Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile, out int _);
+            pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
+            pdfDocumentViewer.ZoomTo(Global.Zoom);
+            pdfDocumentViewer.EnableHandTool();
         }
 
         /// <summary>
@@ -717,25 +826,116 @@ namespace ScanHelper
 
             Directory.CreateDirectory(outputDirectory);     //  utwórz folder wynikowy
 
-            foreach (ScanFile skan in Global.ScanFiles.Values)      //  zapisz każdy skan
+            foreach (ScanFile skan in Global.ScanFiles.Values.Where(skan => skan.Prefix != "skip"))
             {
-                if (skan.Prefix == "skip") continue;    //  nie zapisuj skanu który ma ustawiony prefix SKIP
-
-                int idKdokRodz = Global.DokDict.Values.First(s => s.Prefix == skan.Prefix).IdRodzDok;       //  pobierz id rodzaju dokumentu
-                    
-                int idKdokRodzCount = ++Global.DokDict[idKdokRodz].Count;       //  zwiększ ilość plików danego rodzaju i pobierz tą wartość
-
-                string newFileName = skan.IdFile.ToString().PadLeft(4, '0') +
-                                     "_" +
-                                     textBoxOperat.Text +
-                                     "_" +
-                                     idKdokRodzCount +
-                                     skan.Prefix.TrimEnd('.') +
-                                     Path.GetExtension(skan.FileName);
-
-                File.WriteAllBytes(Path.Combine(outputDirectory, newFileName), skan.PdfFile);
+                File.WriteAllBytes(Path.Combine(outputDirectory, skan.FileNameNew), skan.PdfFile);
             }
 
+        }
+
+        private void AboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            using (FrmAbout frm = new FrmAbout(Global.License))
+            {
+                frm.ShowDialog();
+            }
+        }
+
+        private void ExitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
+
+        private void BtnSaveAndMerge_Click(object sender, EventArgs e)
+        {
+            if (Global.ScanFiles.Count == 0)
+            {
+                MessageBox.Show(@"Brak plików na liście!", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (Global.ScanFiles.Values.Any(o => string.IsNullOrEmpty(o.Prefix)))
+            {
+                MessageBox.Show(@"Nie wszystkie skany zostały zindeksowane!", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            List<string> typesToMerge = Global.DokDict.Values.Where(d => d.Scal).Select(p => p.Prefix).ToList();
+            List<string> typesFromFile = Global.ScanFiles.Values.Where(s => !string.IsNullOrEmpty(s.Prefix)).Select(p => p.Prefix).Distinct().ToList();
+
+            typesToMerge = typesToMerge.Intersect(typesFromFile).ToList();
+
+            string pdfMergeFolder = Path.Combine(Global.ScanFiles[0].Path,textBoxOperat.Text, "merge");
+
+            Directory.CreateDirectory(pdfMergeFolder);     //  utwórz folder wynikowy
+
+            long sizeBefore = 0;
+            long sizeAfter = 0;
+
+            foreach (string prefix in typesToMerge)
+            {
+                string outputFileName;
+
+                MemoryStream outputStream = new MemoryStream();
+
+                using(PdfDocument outputPdf = new PdfDocument(new PdfWriter(outputStream)))
+                {
+                    List<ScanFile> scanFilesForPrefix = Global.ScanFiles.Values.Where(s => s.FileNameNew.Contains(prefix)).ToList();
+
+                    string fileNameMerge = textBoxOperat.Text +
+                                         "_" +
+                                         (scanFilesForPrefix[0].IdFile + 1) + 
+                                         "-" +
+                                         prefix + 
+                                         "-" + 
+                                         "001" +
+                                         Path.GetExtension(scanFilesForPrefix[0].FileName);
+
+                    outputFileName = Path.Combine(pdfMergeFolder, fileNameMerge);
+
+                    PdfMerger pdfMerger = new PdfMerger(outputPdf);
+
+                    foreach (ScanFile scanFile in scanFilesForPrefix)
+                    {
+                        Global.ScanFiles[scanFile.IdFile].Merged = true;
+
+                        sizeBefore += scanFile.PdfFile.Length;
+
+                        using (MemoryStream sourceStream = new MemoryStream(scanFile.PdfFile))
+                        using(PdfDocument inputPdf = new PdfDocument(new PdfReader(sourceStream)))
+                        {
+                            pdfMerger.Merge(inputPdf, 1, inputPdf.GetNumberOfPages());
+                        }
+                    }
+                }
+
+                outputStream.Close();
+
+                File.WriteAllBytes(outputFileName, outputStream.ToArray());
+
+                long length = new FileInfo(outputFileName).Length;
+
+                sizeAfter += length;
+            }
+
+            List<ScanFile> scanFilesWithoutMerge = Global.ScanFiles.Values.Where(scan => scan.Merged == false).ToList(); // lista plików, które nie zostały połączone w jeden
+
+            foreach (ScanFile scanFile in scanFilesWithoutMerge)
+            {
+                sizeBefore += scanFile.PdfFile.Length;
+                sizeAfter += scanFile.PdfFile.Length;
+
+                string outputFileName = Path.Combine(pdfMergeFolder, scanFile.FileNameNew);
+                File.WriteAllBytes(outputFileName, scanFile.PdfFile);
+            }
+
+            MessageBox.Show("Pliki połączono!\n\n" +
+                            $"Rozmiar przed:\t{Math.Round(sizeBefore / (double)1024, 2)} MB\n" +
+                            $"Rozmiar po:\t{Math.Round(sizeAfter / (double)1024, 2)} MB\n\n" +
+                            $"Współczynnik zmiany rozmiaru: { Math.Round(sizeAfter / (double)sizeBefore, 2) }", 
+                Application.ProductName, 
+                MessageBoxButtons.OK, 
+                MessageBoxIcon.Information);
         }
     }
 }
