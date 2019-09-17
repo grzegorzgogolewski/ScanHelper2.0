@@ -1,37 +1,56 @@
-1;okładka;_okl.;0
-2;spis dokumentów operatu technicznego;_spt.;1
-3;wniosek o przyjęcie do zasobu;_wnpg.;1
-4;protokół kontroli;_pkt.;1
-5;decyzja administracyjna;_dec.;0
-6;postanowienie;_pst.;0
-7;zarys;_zar.;0
-8;pierworys;_pier.;0
-9;mapy zmian i notatnik zmian;_nze.;0
-10;szkic polowy;_szp.;0
-11;szkice podstawowe;_szb.;0
-12;szkice polowe/mapa przeglądowa osnowy pomiarowej;_szo.;1
-13;dziennik pomiarowy;_ddz.;1
-14;wykaz współrzędnych;_wsp.;1
-15;wykaz współrzędnych punktów osnowy oraz błędy średnie tych punktów po wyrównaniu;_wspo.;1
-16;sprawozdanie techniczne;_stc.;1
-17;obliczenia współrzędnych;_owp.;1
-18;zestawienia i porównania, rozliczenie powierzchni;_opp.;1
-19;porównanie współrzędnych punktów granicznych oraz ich atrybutów opisowych;_powsp.;1
-20;badanie księgi wieczystej;_bkw.;1
-21;protokół graniczny;_pgr.;0
-22;protokół wznowienia-wyznaczenia znaków granicznych ;_pwzg.;0
-23;protokół przyjęcia granic;_pwg.;0
-24;protokoły okazania nowych granic i przekazania;_png.;0
-25;wykaz zmian danych ewidencyjnych;_wzd.;1
-26;dowód doręczenia zawiadomienia;_zdz.;1
-27;mapa ;_mp.;0
-28;zgłoszenie pracy geodezyjnej;_zgp.;1
-29;wypis z rejestru gruntów;_wsr.;1
-30;opis topograficzny;_opto.;1
-31;dokumentacja klasyfikacyjna;_dku.;1
-32;upoważnienie;_upo.;0
-33;akt notarialny;_akt.;0
-34;oświadczenie;_osw.;0
-35;inny;_inn.;1
-36;inne dokumenty klasyfikacyjne;_indk.;1
-37;wniosek o wprowadzenie do EGiB;_woe.;1
+1;STR-TYT;STR-TYT;1
+2;SPIS;SPIS;1
+3;S-TECH;S-TECH;1
+4;ZGL-PRAC;ZGL-PRAC;1
+5;ZGL-ODP;ZGL-ODP;1
+6;ZAW-ZGL;ZAW-ZGL;1
+7;SZK-POL;SZK-POL;0
+8;SZK-INN;SZK-INN;0
+9;SZK-KAT;SZK-KAT;0
+10;SZK-OSN;SZK-OSN;0
+11;SZK-PRZ;SZK-PRZ;0
+12;M-WYW;M-WYW;0
+13;M-PROJ;M-PROJ;0
+14;M-WPROJ;M-WPROJ;0
+15;M-IN;M-IN;0
+16;M-WYN;M-WYN;0
+17;M-UZ;M-UZ;0
+18;M-KL;M-KL;0
+19;M-KAT;M-KAT;0
+20;DOK-IN;DOK-IN;1
+21;DOK-WYJ;DOK-WYJ;1
+22;DOK-OBL;DOK-OBL;1
+23;OIM;OIM;1
+24;OTOP;OTOP;1
+25;OSW;OSW;1
+26;POST;POST;1
+27;P-KW;P-KW;1
+28;P-G;P-G;1
+29;P-IN;P-IN;1
+30;P-KAT;P-KAT;1
+31;R-IN;R-IN;1
+32;R-GPS;R-GPS;1
+33;REJ-ARCH;REJ-ARCH;1
+34;REJ-IN;REJ-IN;1
+35;REJ-SCAL;REJ-SCAL;1
+36;SK-D;SK-D;1
+37;SK-W;SK-W;1
+38;DZ-P;DZ-P;1
+39;DZ-R;DZ-R;1
+40;DEC;DEC;1
+41;TR-PKT;TR-PKT;1
+42;UGO;UGO;1
+43;UPOW;UPOW;1
+44;WNI-IN;WNI-IN;1
+45;WNI-PRZ;WNI-PRZ;1
+46;W-S;W-S;1
+47;W-WSP;W-WSP;1
+48;W-WYW;W-WYW;1
+49;W-ZDE;W-ZDE;1
+50;ZASW;ZASW;1
+51;ZAW-IN;ZAW-IN;1
+52;ZAW-KW;ZAW-KW;1
+53;ZW;ZW;1
+54;AKN;AKN;1
+55;ADEB;ADEB;1
+56;MATR;MATR;1

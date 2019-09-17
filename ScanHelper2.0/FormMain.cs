@@ -234,7 +234,7 @@ namespace ScanHelper
 
                     using (OpenFileDialog ofDialog = new OpenFileDialog())
                     {
-                        ofDialog.Filter = @"Dokumenty (*.pdf, *.jpg)|*.pdf;*.jpg";
+                        ofDialog.Filter = @"Dokumenty (*.pdf)|*.pdf";
                         ofDialog.Multiselect = true;
                         ofDialog.InitialDirectory = Global.LastDirectory;
 
@@ -264,7 +264,7 @@ namespace ScanHelper
                         if (dialogResult == DialogResult.OK)
                         {
                             fileNames = Directory.GetFiles(fbdOpen.SelectedPath, "*.pdf",SearchOption.TopDirectoryOnly);
-                            fileNames = fileNames.Union(Directory.GetFiles(fbdOpen.SelectedPath, "*.jpg", SearchOption.TopDirectoryOnly)).ToArray();
+                            //fileNames = fileNames.Union(Directory.GetFiles(fbdOpen.SelectedPath, "*.jpg", SearchOption.TopDirectoryOnly)).ToArray();
                             Array.Sort(fileNames, new NaturalStringComparer());
 
                             Global.LastDirectory = fbdOpen.SelectedPath;
@@ -308,7 +308,6 @@ namespace ScanHelper
                     PathAndFileName = fileName,
                     Path = Path.GetDirectoryName(fileName),
                     FileName = Path.GetFileName(fileName),
-                    ImageFile = null,
                     Prefix = null,
                     PdfFile = File.ReadAllBytes(fileName)
                 };
@@ -455,7 +454,9 @@ namespace ScanHelper
 
             int idKdokRodzCount = ++Global.DokDict[buttonNumber].Count;       //  zwiększ ilość plików danego rodzaju i pobierz tą wartość
 
-            string fileNameNew = textBoxOperat.Text +
+            Global.ScanFiles[Global.IdSelectedFile].TypeCounter = idKdokRodzCount;
+
+            string fileName = textBoxOperat.Text +
                                  "_" +
                                  (Global.IdSelectedFile + 1) + 
                                  "-" +
@@ -464,11 +465,9 @@ namespace ScanHelper
                                  idKdokRodzCount.ToString().PadLeft(3, '0') +
                                  Path.GetExtension(Global.ScanFiles[Global.IdSelectedFile].FileName);
 
-            Global.ScanFiles[Global.IdSelectedFile].FileNameNew = fileNameNew;
-
             // chwilowe wyłączenie obsługi zdarzania dla listbox, by móc zmienić nazwę wyświetlanego pliku
             listBoxFiles.SelectedIndexChanged -= ListBoxFiles_SelectedIndexChanged;
-            listBoxFiles.Items[Global.IdSelectedFile] = "OK -> " + fileNameNew;
+            listBoxFiles.Items[Global.IdSelectedFile] = "OK -> " + fileName;
             listBoxFiles.SelectedIndexChanged += ListBoxFiles_SelectedIndexChanged;
 
             //  jeżeli ustawione jest by do każdego pliku dodawać znak wodny
@@ -576,7 +575,16 @@ namespace ScanHelper
         private void BtnSkip_Click(object sender, EventArgs e)
         {
             if (listBoxFiles.Items.Count <= 0)
+            {
+                MessageBox.Show("Brak plików na liście!", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(Global.ScanFiles[Global.IdSelectedFile].Prefix) )
+            {
+                MessageBox.Show("Plik został już zindeksowany!", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             // chwilowe wyłączenie obsługi zdarzania dla listbox, by móc zmienić nazwę wyświetlanego pliku
             listBoxFiles.SelectedIndexChanged -= ListBoxFiles_SelectedIndexChanged;
@@ -585,7 +593,17 @@ namespace ScanHelper
 
             Global.ScanFiles[Global.IdSelectedFile].Prefix = "skip";
 
-            listBoxFiles.SetSelected(Global.IdSelectedFile, true);
+            if (Global.IdSelectedFile < Global.ScanFiles.Count -1 )     //  jeżeli wskazany plik nie jest ostatni na liście to ustaw się na kolejnym
+            {
+                listBoxFiles.SetSelected(Global.IdSelectedFile + 1, true);    //    ustaw się na następnym pliku (listbox ma numerację od "0" wiec nie ma + 1)
+            }
+            else // jeśli wskazany plik jest ostatni na liście to ustaw mu nową nazwę oraz wczytaj go do podglądu po wykonaniu operacji (inaczej nie pokaże się znak wodny)
+            {
+                Global.Zoom = GetFitZoom(Global.ScanFiles[Global.IdSelectedFile].PdfFile, out int _);
+                pdfDocumentViewer.LoadFromStream(new MemoryStream(Global.ScanFiles[Global.IdSelectedFile].PdfFile));
+                pdfDocumentViewer.ZoomTo(Global.Zoom);
+                pdfDocumentViewer.EnableHandTool();
+            }
         }
         
         /// <summary>
@@ -759,8 +777,6 @@ namespace ScanHelper
             if (listBoxFiles.Items.Count <= 0 || string.IsNullOrEmpty(Global.ScanFiles[Global.IdSelectedFile].Prefix)) return;
 
             Global.ScanFiles[Global.IdSelectedFile].Prefix = string.Empty;  //  usuń prefiks
-            Global.ScanFiles[Global.IdSelectedFile].FileNameNew = string.Empty; //  usuń nową nazwę pliku
-            
             Global.ScanFiles[Global.IdSelectedFile].PdfFile = File.ReadAllBytes(Global.ScanFiles[Global.IdSelectedFile].PathAndFileName);   //  wczytaj plik na nowo
 
             // zerowanie licznika rodzaju dokumentów by utworzyć go na nowo na podstawie już nazwanych plików
@@ -777,9 +793,12 @@ namespace ScanHelper
                 if (!string.IsNullOrEmpty(Global.ScanFiles[i].Prefix))
                 {
                     int idKdokRodz = Global.DokDict.Values.First(s => s.Prefix == Global.ScanFiles[i].Prefix).IdRodzDok;
+                    
                     Global.DokDict[idKdokRodz].Count += 1;
                     
-                    string fileNameNew = textBoxOperat.Text +
+                    Global.ScanFiles[i].TypeCounter = Global.DokDict[idKdokRodz].Count;
+
+                    string fileName = textBoxOperat.Text +
                                          "_" +
                                          (i + 1) + 
                                          "-" +
@@ -788,8 +807,7 @@ namespace ScanHelper
                                          Global.DokDict[idKdokRodz].Count.ToString().PadLeft(3, '0') +
                                          Path.GetExtension(Global.ScanFiles[Global.IdSelectedFile].FileName);
 
-                    Global.ScanFiles[i].FileNameNew = fileNameNew;
-                    listBoxFiles.Items[i] = "OK -> " + Global.ScanFiles[i].FileNameNew;
+                    listBoxFiles.Items[i] = "OK -> " + fileName;
                 }
                 else
                 {
@@ -826,11 +844,38 @@ namespace ScanHelper
 
             Directory.CreateDirectory(outputDirectory);     //  utwórz folder wynikowy
 
-            foreach (ScanFile skan in Global.ScanFiles.Values.Where(skan => skan.Prefix != "skip"))
+            List<ScanFile> scanFilesWithoutSkip = Global.ScanFiles.Values.Where(skan => skan.Prefix != "skip").ToList();
+
+            for (int i = 0; i < scanFilesWithoutSkip.Count; i++)
             {
-                File.WriteAllBytes(Path.Combine(outputDirectory, skan.FileNameNew), skan.PdfFile);
+                IRandomAccessSource byteSource = new RandomAccessSourceFactory().CreateSource(scanFilesWithoutSkip[i].PdfFile);
+                PdfReader pdfReader = new PdfReader(byteSource, new ReaderProperties());
+
+                MemoryStream memoryStreamOutput = new MemoryStream();
+                PdfWriter pdfWriter = new PdfWriter(memoryStreamOutput);
+
+                PdfDocument pdfDoc = new PdfDocument(pdfReader, pdfWriter);
+
+                PdfDocumentInfo info = pdfDoc.GetDocumentInfo();
+
+                info.SetCreator("GISNET ScanHelper");
+
+                pdfDoc.Close();
+
+
+                string fileName = textBoxOperat.Text +
+                                     "_" +
+                                     (i + 1) +
+                                     "-" +
+                                     scanFilesWithoutSkip[i].Prefix +
+                                     "-" +
+                                     scanFilesWithoutSkip[i].TypeCounter.ToString().PadLeft(3, '0') +
+                                     Path.GetExtension(scanFilesWithoutSkip[i].FileName);
+
+                File.WriteAllBytes(Path.Combine(outputDirectory, fileName), memoryStreamOutput.ToArray());
             }
 
+            MessageBox.Show("Pliki zapisano!", Application.ProductName, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void AboutToolStripMenuItem_Click(object sender, EventArgs e)
@@ -861,6 +906,7 @@ namespace ScanHelper
             }
 
             List<string> typesToMerge = Global.DokDict.Values.Where(d => d.Scal).Select(p => p.Prefix).ToList();
+
             List<string> typesFromFile = Global.ScanFiles.Values.Where(s => !string.IsNullOrEmpty(s.Prefix)).Select(p => p.Prefix).Distinct().ToList();
 
             typesToMerge = typesToMerge.Intersect(typesFromFile).ToList();
@@ -869,29 +915,32 @@ namespace ScanHelper
 
             Directory.CreateDirectory(pdfMergeFolder);     //  utwórz folder wynikowy
 
+            List<ScanFile> outputPdfFiles = new List<ScanFile>();
+
             long sizeBefore = 0;
             long sizeAfter = 0;
 
             foreach (string prefix in typesToMerge)
             {
-                string outputFileName;
+                ScanFile mergedScanFile = new ScanFile
+                {
+                    Prefix = prefix,
+                    TypeCounter = 1
+                };
 
                 MemoryStream outputStream = new MemoryStream();
 
                 using(PdfDocument outputPdf = new PdfDocument(new PdfWriter(outputStream)))
                 {
-                    List<ScanFile> scanFilesForPrefix = Global.ScanFiles.Values.Where(s => s.FileNameNew.Contains(prefix)).ToList();
+                    PdfDocumentInfo info = outputPdf.GetDocumentInfo();
 
-                    string fileNameMerge = textBoxOperat.Text +
-                                         "_" +
-                                         (scanFilesForPrefix[0].IdFile + 1) + 
-                                         "-" +
-                                         prefix + 
-                                         "-" + 
-                                         "001" +
-                                         Path.GetExtension(scanFilesForPrefix[0].FileName);
+                    info.SetCreator("GISNET ScanHelper");
 
-                    outputFileName = Path.Combine(pdfMergeFolder, fileNameMerge);
+                    List<ScanFile> scanFilesForPrefix = Global.ScanFiles.Values.Where(s => s.Prefix == prefix).ToList();
+
+                    //  przypisanie atrybutów pierwszego pliku do pliku wynikowego
+                    mergedScanFile.IdFile = scanFilesForPrefix[0].IdFile;   
+                    mergedScanFile.FileName = scanFilesForPrefix[0].FileName;
 
                     PdfMerger pdfMerger = new PdfMerger(outputPdf);
 
@@ -911,28 +960,48 @@ namespace ScanHelper
 
                 outputStream.Close();
 
-                File.WriteAllBytes(outputFileName, outputStream.ToArray());
+                mergedScanFile.PdfFile = outputStream.ToArray();
 
-                long length = new FileInfo(outputFileName).Length;
+                sizeAfter += mergedScanFile.PdfFile.Length;
 
-                sizeAfter += length;
+                outputPdfFiles.Add(mergedScanFile);
             }
 
-            List<ScanFile> scanFilesWithoutMerge = Global.ScanFiles.Values.Where(scan => scan.Merged == false).ToList(); // lista plików, które nie zostały połączone w jeden
+            // lista plików, które nie zostały połączone w jeden i ich prefiks nie jest "skip"
+            List<ScanFile> scanFilesWithoutMerge = Global.ScanFiles.Values.Where(scan => scan.Merged == false && scan.Prefix != "skip").ToList(); 
 
             foreach (ScanFile scanFile in scanFilesWithoutMerge)
             {
                 sizeBefore += scanFile.PdfFile.Length;
                 sizeAfter += scanFile.PdfFile.Length;
 
-                string outputFileName = Path.Combine(pdfMergeFolder, scanFile.FileNameNew);
-                File.WriteAllBytes(outputFileName, scanFile.PdfFile);
+                outputPdfFiles.Add(scanFile);
+            }
+
+            List<ScanFile> outputPdfFilesOrdered = outputPdfFiles.OrderBy(x => x.IdFile).ToList();
+
+            for (int i = 0; i < outputPdfFilesOrdered.Count; i++)
+            {
+                ScanFile pdfFile = outputPdfFilesOrdered[i];
+
+                string fileName = textBoxOperat.Text +
+                                     "_" +
+                                     (i + 1) + 
+                                     "-" +
+                                     pdfFile.Prefix + 
+                                     "-" + 
+                                     pdfFile.TypeCounter.ToString().PadLeft(3, '0') +
+                                     Path.GetExtension(pdfFile.FileName);
+
+                fileName = Path.Combine(pdfMergeFolder, fileName);
+
+                File.WriteAllBytes(fileName, pdfFile.PdfFile);
             }
 
             MessageBox.Show("Pliki połączono!\n\n" +
                             $"Rozmiar przed:\t{Math.Round(sizeBefore / (double)1024, 2)} MB\n" +
                             $"Rozmiar po:\t{Math.Round(sizeAfter / (double)1024, 2)} MB\n\n" +
-                            $"Współczynnik zmiany rozmiaru: { Math.Round(sizeAfter / (double)sizeBefore, 2) }", 
+                            $"Współczynnik zmiany rozmiaru: {Math.Round(sizeAfter / (double)sizeBefore, 2)}", 
                 Application.ProductName, 
                 MessageBoxButtons.OK, 
                 MessageBoxIcon.Information);
